@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #12151B;
+  --surface: #1B2029;
+  --surface-raised: #232936;
+  --border: #2E3440;
+  --border-soft: #242A35;
+  --text: #EDEFF2;
+  --text-muted: #8A94A6;
+  --text-faint: #5C6478;
+
+  --teal: #4FA69B;
+  --teal-dim: #2E4C48;
+  --amber: #E3A857;
+  --amber-dim: #4A3D28;
+  --red: #D9636B;
+  --red-dim: #4A2C30;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--ink);
+  background-image:
+    linear-gradient(rgba(46, 52, 64, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 52, 64, 0.55) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--teal-dim);
+  color: var(--text);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

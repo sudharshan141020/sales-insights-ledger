@@ -1,0 +1,179 @@
+"""
+Dataset Understanding Engine.
+
+This is the new foundation layer: instead of the rest of the app each
+re-deriving "what's the metric, what's chartable" in their own way (which is
+exactly the duplication the redesign brief calls out), everything downstream
+— the analysis planner, visualization planner, insight engine, weak-point
+detector — should consume ONE structured DatasetProfile produced here.
+
+Builds directly on the existing semantic_roles.classify_columns() and
+domains.detect_domain() — this phase does not throw that work away, it
+gives it a proper home and a richer output shape (an entity name, a full
+list of measures instead of just one, a full list of dimensions) instead of
+the narrower "primary_metric_col" the old planner used.
+"""
+from dataclasses import dataclass, field
+import pandas as pd
+
+from app.semantic_roles import classify_columns
+from app.domains import detect_domain
+
+# Roles that represent "what each row is about" — the primary entity.
+ENTITY_ROLE_TO_NOUN = {
+    "PATIENT": "Patient",
+    "CUSTOMER": "Customer",
+    "STUDENT": "Student",
+    "EMPLOYEE": "Employee",
+    "DRIVER": "Driver",
+}
+
+# Fallback when no column explicitly matched an entity role — a healthcare
+# file's rows are patients by definition of the domain, even if the
+# identity column happened to just be called "Name" rather than
+# "Patient Name". This only kicks in once the domain itself is confidently
+# known, so it never overrides genuine "generic" datasets with a guess.
+DOMAIN_DEFAULT_ENTITY = {
+    "healthcare": "Patient",
+    "sales": "Customer",
+    "education": "Student",
+    "hr": "Employee",
+    "finance": "Account",
+}
+
+# Roles that represent something worth measuring/aggregating numerically,
+# with the aggregation that's actually meaningful for that role. This is the
+# single canonical source for aggregation rules — nothing else in the
+# codebase should redefine "sum vs avg" independently.
+MEASURE_ROLES = {
+    "FINANCIAL_METRIC": "sum",
+    "PROFIT": "sum",
+    "DISCOUNT": "avg",
+    "AGE": "avg",
+    "SCORE": "avg",
+    "ATTENDANCE": "avg",
+    "LENGTH_OF_STAY": "avg",
+    "TENURE": "avg",
+    "CONGESTION": "avg",
+    "ACCIDENT": "sum",
+    "SPEED": "avg",
+}
+
+# Roles that represent a "slice by this" dimension.
+DIMENSION_ROLES = {
+    "CONDITION", "HOSPITAL", "INSURANCE", "MEDICATION", "TEST_RESULT",
+    "ADMISSION_TYPE", "GENDER", "DEMOGRAPHIC", "DEPARTMENT", "JOB_TITLE",
+    "VEHICLE", "ROOM", "SUBJECT", "CATEGORY", "LOCATION",
+}
+
+
+@dataclass
+class Measure:
+    column: str
+    role: str
+    aggregation: str  # "sum" | "avg"
+    is_primary: bool = False
+
+
+@dataclass
+class Dimension:
+    column: str
+    role: str
+    cardinality: int
+    is_chartable: bool = True
+
+
+@dataclass
+class DatasetProfile:
+    domain: str
+    domain_confidence: float
+    primary_entity: str          # human noun, e.g. "Patient", or "Record" if unknown
+    row_count: int
+    column_count: int
+    data_completeness_pct: float
+    date_column: str | None
+    measures: list = field(default_factory=list)      # list[Measure]
+    dimensions: list = field(default_factory=list)     # list[Dimension]
+    semantic_roles: dict = field(default_factory=dict)  # column -> role, for transparency/debugging
+
+    @property
+    def primary_measure(self):
+        """The single headline measure, if any — FINANCIAL_METRIC wins if present,
+        otherwise the first measure found. Kept for backward compatibility with
+        code that only needs one metric; new code should prefer `measures`."""
+        for m in self.measures:
+            if m.is_primary:
+                return m
+        return self.measures[0] if self.measures else None
+
+
+def _is_chartable(cardinality: int, row_count: int) -> bool:
+    return 2 <= cardinality <= min(30, max(row_count * 0.5, 2))
+
+
+def understand_dataset(df: pd.DataFrame) -> DatasetProfile:
+    """
+    The single entry point for the entire downstream pipeline. Everything
+    else (analysis planner, insight engine, weak-point detector) should take
+    a DatasetProfile as input rather than re-deriving roles from a raw
+    dataframe.
+    """
+    semantic_roles = classify_columns(df)
+    domain_result = detect_domain(semantic_roles)
+    numeric_cols = set(df.select_dtypes(include="number").columns)
+
+    row_count = int(len(df))
+    col_count = int(len(df.columns))
+    missing_frac = df.isnull().mean().mean() if col_count else 0
+    completeness = float(round((1 - missing_frac) * 100, 1))
+
+    date_column = next((c for c, info in semantic_roles.items() if info["role"] == "DATE"), None)
+
+    # --- Entity ---
+    entity_role = next((info["role"] for info in semantic_roles.values() if info["role"] in ENTITY_ROLE_TO_NOUN), None)
+    if entity_role:
+        primary_entity = ENTITY_ROLE_TO_NOUN[entity_role]
+    elif domain_result["domain"] in DOMAIN_DEFAULT_ENTITY:
+        primary_entity = DOMAIN_DEFAULT_ENTITY[domain_result["domain"]]
+    else:
+        primary_entity = "Record"
+
+    # --- Measures ---
+    measures = []
+    primary_set = False
+    # FINANCIAL_METRIC always gets first shot at being primary, if present
+    ordered_roles = ["FINANCIAL_METRIC"] + [r for r in MEASURE_ROLES if r != "FINANCIAL_METRIC"]
+    for role in ordered_roles:
+        for col, info in semantic_roles.items():
+            if info["role"] == role and col in numeric_cols:
+                is_primary = not primary_set
+                measures.append(Measure(column=col, role=role, aggregation=MEASURE_ROLES[role], is_primary=is_primary))
+                if is_primary:
+                    primary_set = True
+
+    # --- Dimensions ---
+    dimensions = []
+    for col, info in semantic_roles.items():
+        role = info["role"]
+        if role not in DIMENSION_ROLES:
+            continue
+        cardinality = int(df[col].nunique())
+        dimensions.append(Dimension(
+            column=col,
+            role=role,
+            cardinality=cardinality,
+            is_chartable=_is_chartable(cardinality, row_count),
+        ))
+
+    return DatasetProfile(
+        domain=domain_result["domain"],
+        domain_confidence=domain_result["confidence"],
+        primary_entity=primary_entity,
+        row_count=row_count,
+        column_count=col_count,
+        data_completeness_pct=completeness,
+        date_column=date_column,
+        measures=measures,
+        dimensions=dimensions,
+        semantic_roles={c: info["role"] for c, info in semantic_roles.items()},
+    )

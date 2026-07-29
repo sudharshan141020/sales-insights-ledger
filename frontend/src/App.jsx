@@ -1,0 +1,249 @@
+import { useState } from 'react';
+import Sidebar from './components/Sidebar';
+import MappingSummary from './components/MappingSummary';
+import UploadZone from './components/UploadZone';
+import ExecutiveSummary from './components/ExecutiveSummary';
+import IntelligentDashboard from './components/IntelligentDashboard';
+import StoryMode from './components/StoryMode';
+import AnalysisExplorerV2 from './components/AnalysisExplorerV2';
+import FindingsPanel from './components/FindingsPanel';
+import WeakPointsPanel from './components/WeakPointsPanel';
+import DataQualityCenter from './components/DataQualityCenter';
+import CorrelationCenter from './components/CorrelationCenter';
+import WorkflowSteps from './components/WorkflowSteps';
+import TopBar from './components/TopBar';
+import { analyzeFile, analyzeCombined, loadDemoFile } from './api';
+
+function makeId() {
+  return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// Pinned sessions first (most-recently-pinned first within that group),
+// then everyone else in upload order.
+function sortSessions(sessions) {
+  const pinned = sessions.filter((s) => s.pinned);
+  const rest = sessions.filter((s) => !s.pinned);
+  return [...pinned, ...rest];
+}
+
+export default function App() {
+  const [sessions, setSessions] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
+  const [combineMode, setCombineMode] = useState(false);
+  const [selectedForCombine, setSelectedForCombine] = useState([]);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleFilesSelected = (files, errorMsg) => {
+    setUploadError(errorMsg || null);
+    if (!files.length) return;
+
+    const newSessions = files.map((file) => ({
+      id: makeId(),
+      fileName: file.name,
+      status: 'loading',
+      result: null,
+      error: null,
+      pinned: false,
+      sourceFile: file, // kept in memory so this file can be resent later for combining
+      isCombined: false,
+    }));
+
+    setSessions((prev) => [...prev, ...newSessions]);
+    setActiveId(newSessions[0].id);
+
+    files.forEach((file, idx) => {
+      const sessionId = newSessions[idx].id;
+      analyzeFile(file)
+        .then((data) => {
+          setSessions((prev) => prev.map((s) => (
+            s.id === sessionId ? { ...s, status: 'ready', result: data } : s
+          )));
+        })
+        .catch((e) => {
+          setSessions((prev) => prev.map((s) => (
+            s.id === sessionId ? { ...s, status: 'error', error: e.message } : s
+          )));
+        });
+    });
+  };
+
+  const handleRemove = (id) => {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      if (id === activeId) {
+        setActiveId(next.length ? next[next.length - 1].id : null);
+      }
+      return next;
+    });
+    setSelectedForCombine((prev) => prev.filter((sid) => sid !== id));
+  };
+
+  const handleTogglePin = (id) => {
+    setSessions((prev) => prev.map((s) => (
+      s.id === id ? { ...s, pinned: !s.pinned } : s
+    )));
+  };
+
+  const handleToggleCombineMode = () => {
+    setCombineMode((m) => !m);
+    setSelectedForCombine([]);
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedForCombine((prev) => (
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+    ));
+  };
+
+  const handleCombine = () => {
+    const chosen = sessions.filter((s) => (
+      selectedForCombine.includes(s.id) && s.status === 'ready' && s.sourceFile
+    ));
+    if (chosen.length < 2) return;
+
+    const combinedId = makeId();
+    const combinedName = `Combined: ${chosen.map((s) => s.fileName).join(' + ')}`;
+
+    setSessions((prev) => [...prev, {
+      id: combinedId,
+      fileName: combinedName,
+      status: 'loading',
+      result: null,
+      error: null,
+      pinned: false,
+      sourceFile: null,
+      isCombined: true,
+    }]);
+    setActiveId(combinedId);
+    setCombineMode(false);
+    setSelectedForCombine([]);
+
+    analyzeCombined(chosen.map((s) => s.sourceFile))
+      .then((data) => {
+        setSessions((prev) => prev.map((s) => (
+          s.id === combinedId ? { ...s, status: 'ready', result: data } : s
+        )));
+      })
+      .catch((e) => {
+        setSessions((prev) => prev.map((s) => (
+          s.id === combinedId ? { ...s, status: 'error', error: e.message } : s
+        )));
+      });
+  };
+
+  const handleTryDemo = () => {
+    setDemoLoading(true);
+    loadDemoFile()
+      .then((file) => handleFilesSelected([file], null))
+      .catch((e) => setUploadError(e.message))
+      .finally(() => setDemoLoading(false));
+  };
+
+  const displaySessions = sortSessions(sessions);
+  const activeSession = sessions.find((s) => s.id === activeId);
+
+  return (
+    <div className="app-shell">
+      <TopBar />
+
+      {sessions.length > 0 && (
+        <Sidebar
+          sessions={displaySessions}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onRemove={handleRemove}
+          onFilesSelected={handleFilesSelected}
+          uploadError={uploadError}
+          onTogglePin={handleTogglePin}
+          combineMode={combineMode}
+          onToggleCombineMode={handleToggleCombineMode}
+          selectedForCombine={selectedForCombine}
+          onToggleSelect={handleToggleSelect}
+          onCombine={handleCombine}
+        />
+      )}
+
+      <main className={`app-main-area ${sessions.length === 0 ? 'centered' : ''}`}>
+        {sessions.length === 0 && (
+          <div className="empty-state">
+            <div className="hero">
+              <div className="brand">
+                <span className="brand-mark" />
+                <span className="brand-name">DATALENS</span>
+              </div>
+              <p className="hero-kicker">Automated Data Intelligence</p>
+              <p className="hero-desc">
+                Upload any Excel or CSV file and instantly surface trends,
+                correlations, outliers, and concrete recommendations — ranked
+                by how much they actually matter. Works on any dataset;
+                sales files unlock deeper findings like profit risk and
+                customer concentration automatically.
+              </p>
+            </div>
+
+            <UploadZone onFilesSelected={handleFilesSelected} error={uploadError} />
+
+            <button className="demo-btn" onClick={handleTryDemo} disabled={demoLoading}>
+              {demoLoading ? 'Loading demo…' : 'Try Demo Dataset'}
+            </button>
+
+            <WorkflowSteps />
+
+            <ul className="trust-list">
+              <li>✓ Automatic column detection — works on files it's never seen</li>
+              <li>✓ Rule-based, ranked findings — no AI calls, nothing sent to third parties</li>
+              <li>✓ Nothing stored — each file is processed in memory and discarded</li>
+            </ul>
+
+            <p className="tech-line dim-sub">
+              Powered by <span className="mono">React • FastAPI • Python • pandas</span>
+            </p>
+          </div>
+        )}
+
+        {activeSession && activeSession.status === 'loading' && (
+          <div className="session-loading">
+            <p className="upload-title">
+              {activeSession.isCombined ? 'Combining files…' : `Reading ${activeSession.fileName}…`}
+            </p>
+            <p className="dim-sub">Detecting columns, computing KPIs, ranking findings</p>
+          </div>
+        )}
+
+        {activeSession && activeSession.status === 'error' && (
+          <div className="session-loading">
+            <p className="upload-title" style={{ color: 'var(--red)' }}>Couldn't analyze {activeSession.fileName}</p>
+            <p className="dim-sub">{activeSession.error}</p>
+          </div>
+        )}
+
+        {activeSession && activeSession.status === 'ready' && (
+          <div className="dashboard">
+            {activeSession.isCombined && (
+              <p className="dim-sub" style={{ marginBottom: 12 }}>
+                Merged from {activeSession.result.source_files?.join(', ')}
+              </p>
+            )}
+
+            <ExecutiveSummary fileName={activeSession.fileName} v2={activeSession.result.v2} />
+
+            <MappingSummary result={activeSession.result} />
+
+            <IntelligentDashboard topAnalyses={activeSession.result.v2.top_analyses} tickNum="02" />
+
+            <StoryMode story={activeSession.result.v2.story} tickNum="03" />
+
+            <div className="dashboard-grid">
+              <AnalysisExplorerV2 analyses={activeSession.result.v2.all_analyses} tickNum="04" />
+              <FindingsPanel findings={activeSession.result.v2.findings} tickNum="05" />
+              <WeakPointsPanel weakPoints={activeSession.result.v2.weak_points} tickNum="06" />
+              <DataQualityCenter dataQuality={activeSession.result.v2.data_quality} tickNum="07" />
+              <CorrelationCenter correlationCenter={activeSession.result.v2.correlation_center} tickNum="08" />
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
