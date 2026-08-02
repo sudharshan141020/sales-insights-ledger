@@ -7,6 +7,11 @@ saying what to do about it isn't useful. The Recommendation Engine's job is
 specifically the `suggested_action` text on each WeakPoint; keeping it as a
 clearly separate function per detector (not just inlined) is what keeps the
 "detect vs recommend" split real rather than cosmetic.
+
+Language rule for every string below: write it so someone with zero data
+analysis background can read it and understand what's wrong and why it
+matters. No "margin", "concentration", "IQR", "quartile", "variance" — say
+what those things actually mean in plain terms instead.
 """
 from dataclasses import dataclass
 import pandas as pd
@@ -61,17 +66,16 @@ def declining_trend(df: pd.DataFrame, profile: DatasetProfile) -> list:
 
     magnitude = abs(change)
     priority = HIGH if magnitude > 30 else MEDIUM if magnitude > 15 else LOW
-    problem_label = f"Declining {primary.column}"
 
     return [WeakPoint(
-        problem=problem_label,
-        impact=f"{primary.column} fell {_fmt_pct(magnitude)} from {agg.index[0]} to {agg.index[-1]} "
-               f"({_fmt_num(agg.iloc[0])} → {_fmt_num(agg.iloc[-1])}).",
+        problem=f"{primary.column} is trending down",
+        impact=f"{primary.column} dropped from {_fmt_num(agg.iloc[0])} to {_fmt_num(agg.iloc[-1])} "
+               f"between {agg.index[0]} and {agg.index[-1]} — a {_fmt_pct(magnitude)} decrease.",
         priority=priority,
         suggested_action=(
-            f"Break down {primary.column} by each available dimension to see whether the decline is "
-            f"concentrated in one segment (fixable — points to something specific that changed) or spread "
-            f"evenly across all of them (points to an external/market-wide cause instead)."
+            f"Check whether this drop is happening across the board or mainly in one specific group. "
+            f"If it's just one group, something specific likely changed there and can probably be fixed. "
+            f"If it's happening everywhere at once, the cause is more likely something external."
         ),
         category="trend",
         score=magnitude,
@@ -84,15 +88,16 @@ def missing_data(df: pd.DataFrame, profile: DatasetProfile) -> list:
     worst = missing_pct[missing_pct > 15]
     for col, pct in worst.head(3).items():
         priority = HIGH if pct > 50 else MEDIUM if pct > 30 else LOW
+        roughly_out_of_100 = round(pct)
         out.append(WeakPoint(
-            problem=f"Missing data in {col}",
-            impact=f"{col} is missing in {_fmt_pct(pct)} of rows, which can bias any average, "
-                   f"breakdown, or trend that relies on it.",
+            problem=f"Missing information: {col}",
+            impact=f"About {roughly_out_of_100} out of every 100 records don't have a value for {col}. "
+                   f"Any chart, average, or comparison that uses {col} is only seeing part of the picture.",
             priority=priority,
             suggested_action=(
-                f"Confirm whether this is expected (e.g. {col} is an optional field) or a genuine data "
-                f"collection gap. If it's expected, exclude {col} from anything requiring completeness; "
-                f"if it's a gap, fixing collection going forward matters more than imputing the past."
+                f"Figure out why {col} is missing so often — is it an optional field that's fine to leave "
+                f"blank, or something that should have been filled in but wasn't? If it should be there, "
+                f"fixing how it's collected going forward matters more than trying to fill in old records."
             ),
             category="data_quality",
             score=pct,
@@ -119,15 +124,17 @@ def outlier_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
         if row_share < 8 and value_share > 20:
             priority = HIGH if value_share > 40 else MEDIUM
             out.append(WeakPoint(
-                problem=f"Outliers in {m.column}",
-                impact=f"{len(outliers)} unusually high {m.column} values ({_fmt_pct(row_share)} of rows) "
-                       f"account for {_fmt_pct(value_share)} of the total — a small number of extreme "
-                       f"values are distorting the overall picture.",
+                problem=f"A few unusually high {m.column} values",
+                impact=f"Just {len(outliers)} records ({_fmt_pct(row_share)} of all rows) have {m.column} "
+                       f"values far above everything else — but together they make up {_fmt_pct(value_share)} "
+                       f"of the total. That's enough for a handful of records to make an average or total "
+                       f"look bigger than it really is for most of the data.",
                 priority=priority,
                 suggested_action=(
-                    f"Check these {len(outliers)} rows individually — confirm they're legitimate before "
-                    f"trusting any average or total that includes {m.column}, since a handful of data entry "
-                    f"errors or genuine extreme cases can swing the numbers substantially either way."
+                    f"Take a look at these {len(outliers)} records specifically. If they're real (a genuinely "
+                    f"huge order, an unusually long stay, etc.), that's fine — just know they're skewing the "
+                    f"numbers. If they look like typos or data entry mistakes, fixing them will make averages "
+                    f"and totals more trustworthy."
                 ),
                 category="outlier",
                 score=value_share,
@@ -138,17 +145,17 @@ def outlier_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
 
 def concentration_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
     """Domain-flavored: 'disease hotspot' for healthcare CONDITION, generic
-    'concentration risk' otherwise — same detection logic, different framing."""
+    framing otherwise — same detection logic, different wording."""
     out = []
     primary = profile.primary_measure
     if not primary:
         return out
 
     DOMAIN_FRAME = {
-        "CONDITION": "Disease hotspot",
-        "CUSTOMER": "Customer concentration risk",
-        "HOSPITAL": "Hospital load imbalance",
-        "LOCATION": "Regional concentration",
+        "CONDITION": "One condition shows up far more than others",
+        "CUSTOMER": "A small number of customers make up most of the business",
+        "HOSPITAL": "One hospital is handling a lot more than the others",
+        "LOCATION": "One region stands out from the rest",
     }
 
     for d in profile.dimensions:
@@ -165,17 +172,18 @@ def concentration_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
             continue
 
         priority = HIGH if share > 50 else MEDIUM if share > expected * 2 else LOW
-        problem_label = DOMAIN_FRAME.get(d.role, f"{d.column} concentration")
+        problem_label = DOMAIN_FRAME.get(d.role, f"One {d.column} stands out from the rest")
 
         out.append(WeakPoint(
             problem=problem_label,
-            impact=f"{top_label} accounts for {_fmt_pct(share)} of total {primary.column} across "
-                   f"{d.column} groups — versus an even {_fmt_pct(expected)} split across {len(grouped)} groups.",
+            impact=f"{top_label} alone makes up {_fmt_pct(share)} of all {primary.column} — much more than "
+                   f"you'd expect if it were spread evenly across the {len(grouped)} different "
+                   f"{d.column} groups (which would be about {_fmt_pct(expected)} each).",
             priority=priority,
             suggested_action=(
-                f"This isn't automatically bad, but worth deciding deliberately: is {top_label} being "
-                f"resourced/protected adequately given how much it carries, and is there a plan if it "
-                f"underperforms — since so much currently depends on it."
+                f"This isn't necessarily a problem, but it's worth a deliberate look: is {top_label} getting "
+                f"the attention and resources it deserves given how much depends on it? And is there a "
+                f"backup plan if something changes there, since so much currently relies on just this one?"
             ),
             category="concentration",
             score=share - expected,
@@ -206,13 +214,14 @@ def underperforming_segment(df: pd.DataFrame, profile: DatasetProfile) -> list:
                 continue
             priority = HIGH if gap_pct > 35 else MEDIUM
             out.append(WeakPoint(
-                problem=f"Low {m.column} in {worst_label}",
-                impact=f"{worst_label} averages {_fmt_num(worst_val)} on {m.column}, "
-                       f"{_fmt_pct(gap_pct)} below the overall average of {_fmt_num(overall_avg)}.",
+                problem=f"{worst_label} is falling behind on {m.column}",
+                impact=f"{worst_label} averages {_fmt_num(worst_val)} for {m.column}, which is "
+                       f"{_fmt_pct(gap_pct)} lower than the overall average of {_fmt_num(overall_avg)}.",
                 priority=priority,
                 suggested_action=(
-                    f"Investigate what's different about {worst_label} specifically — resourcing, "
-                    f"support, or structural factors — before assuming the same fix applies dataset-wide."
+                    f"Look into what makes {worst_label} different — is it a resourcing issue, a support "
+                    f"gap, or something structural? Understand the specific cause there before assuming "
+                    f"a one-size-fits-all fix will help."
                 ),
                 category="underperformance",
                 score=gap_pct,
@@ -238,15 +247,16 @@ def margin_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
         for label, row in losers.head(2).iterrows():
             priority = HIGH if row["margin"] < -20 else MEDIUM
             out.append(WeakPoint(
-                problem=f"{label} is unprofitable",
-                impact=f"{label} ({d.column}) runs a {_fmt_pct(row['margin'])} margin on "
-                       f"{_fmt_num(row[revenue.column])} in {revenue.column}, "
-                       f"losing {_fmt_num(abs(row[profit.column]))}.",
+                problem=f"{label} is actually losing money",
+                impact=f"{label} brought in {_fmt_num(row[revenue.column])} in {revenue.column}, but after "
+                       f"costs it lost {_fmt_num(abs(row[profit.column]))} overall — every sale here is "
+                       f"currently costing more than it earns.",
                 priority=priority,
                 suggested_action=(
-                    f"Check whether the loss is discount-driven or cost-driven before cutting {label} — "
-                    f"a discount cap fixes the former without losing the revenue, while the latter needs "
-                    f"a price increase or cost renegotiation."
+                    f"Find out whether the losses come from discounting too heavily or from the underlying "
+                    f"cost being too high. If it's discounting, capping how much gets discounted here should "
+                    f"fix it without losing the sales. If it's cost, that likely needs a price increase or "
+                    f"a cheaper way to deliver it."
                 ),
                 category="underperformance",
                 score=abs(row["margin"]) + 15,
@@ -283,13 +293,15 @@ def discount_risk(df: pd.DataFrame, profile: DatasetProfile) -> list:
     priority = HIGH if worst_val < -50 else MEDIUM
 
     return [WeakPoint(
-        problem="Discounting is unprofitable past a threshold",
-        impact=f"Orders discounted {worst_band} run a {_fmt_pct(worst_val)} average margin — "
-               f"discounting past this point actively loses money, not just cuts profit.",
+        problem="Big discounts are losing money, not just cutting profit",
+        impact=f"Once a discount goes above {worst_band}, those sales stop making money entirely and "
+               f"start losing it instead — on average, losing about {_fmt_pct(abs(worst_val))} of the "
+               f"sale price for every order discounted that much.",
         priority=priority,
         suggested_action=(
-            f"Cap discretionary discounts at the {safe_ceiling} band, where margin was still positive — "
-            f"treat anything beyond that as needing approval rather than a default checkout option."
+            f"Consider capping discounts at around {safe_ceiling}, which is the highest level where sales "
+            f"were still profitable. Anything beyond that could require manager approval instead of being "
+            f"offered automatically at checkout."
         ),
         category="underperformance",
         score=abs(worst_val) + 20,

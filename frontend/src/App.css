@@ -164,7 +164,7 @@
 
 .combine-run {
   background: var(--teal);
-  color: var(--ink);
+  color: #0A0A0B;
   border: none;
   font-weight: 600;
   font-size: 12.5px;
@@ -304,8 +304,9 @@
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px 20px 8px;
+  border-radius: 16px;
+  padding: 22px 22px 12px;
+  box-shadow: var(--shadow-card);
 }
 
 .panel-head {
@@ -324,7 +325,7 @@
 
 .btn-primary {
   background: var(--teal);
-  color: var(--ink);
+  color: #0A0A0B;
   border: none;
   border-radius: 6px;
   padding: 11px 20px;
@@ -355,7 +356,7 @@
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  border: 1px dashed var(--border);
+  border: 1.5px dashed #3A3A40;
   border-radius: 10px;
   padding: 32px 28px;
   background: var(--surface);
@@ -702,7 +703,7 @@
   font-size: 12.5px;
   line-height: 1.6;
   color: var(--text);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 /* ---------- Hero ---------- */
@@ -742,7 +743,7 @@
   align-items: center;
   text-align: center;
   gap: 6px;
-  border: 1px dashed var(--border);
+  border: 1.5px dashed #3A3A40;
   border-radius: 10px;
   padding: 40px 28px 32px;
   background: var(--surface);
@@ -758,7 +759,7 @@
 .upload-zone.dragging {
   border-color: var(--teal);
   background: var(--surface-raised);
-  box-shadow: 0 0 0 3px var(--teal-dim), 0 0 24px rgba(79, 166, 155, 0.25);
+  box-shadow: 0 0 0 3px var(--teal-dim), 0 0 20px rgba(245, 245, 246, 0.1);
 }
 
 .upload-icon {
@@ -792,7 +793,7 @@
 .upload-browse-btn {
   display: inline-block;
   background: var(--teal);
-  color: var(--ink);
+  color: #0A0A0B;
   font-weight: 600;
   font-size: 13px;
   padding: 8px 18px;
@@ -918,24 +919,18 @@
 
 /* ---------- Executive Summary ---------- */
 .exec-summary {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px 22px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .exec-summary-head {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
   margin-bottom: 18px;
 }
 
 .exec-title {
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin-bottom: 4px;
 }
 
@@ -955,31 +950,54 @@
 
 .exec-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 14px;
 }
 
-.exec-stat {
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.stat-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-card-body {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  min-width: 0;
 }
 
-.exec-stat-value {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.exec-stat-warn {
-  color: var(--amber);
-}
-
-.exec-stat-label {
+.stat-card-label {
   font-size: 11px;
   color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.stat-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-card-value-warn {
+  color: var(--red);
 }
 
 /* ---------- Intelligent Dashboard (top 3) ---------- */

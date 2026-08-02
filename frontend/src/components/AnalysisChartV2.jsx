@@ -15,7 +15,7 @@ function formatAxisValue(v) {
   return v;
 }
 
-const PALETTE = ['var(--teal)', 'var(--amber)', '#6B8FB5', '#B57BC7', '#D9926B', '#7BC79E', '#C77B9E', '#9EC77B'];
+const PALETTE = ['#F5F5F6', '#C9C9CD', '#9B9BA1', '#71717A', '#52525B', '#3F3F46', '#27272A', '#18181B'];
 
 function ChartTooltip({ active, payload, label, valueLabel, isCurrency }) {
   if (!active || !payload?.length) return null;

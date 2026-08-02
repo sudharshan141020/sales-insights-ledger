@@ -1,23 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --ink: #12151B;
-  --surface: #1B2029;
-  --surface-raised: #232936;
-  --border: #2E3440;
-  --border-soft: #242A35;
-  --text: #EDEFF2;
-  --text-muted: #8A94A6;
-  --text-faint: #5C6478;
+  /* True minimalist black & white — color is used ONLY where it carries
+     real meaning (a high-priority warning), never decoratively. */
+  --ink: #0A0A0B;              /* page background — near black */
+  --surface: #131315;          /* card background */
+  --surface-raised: #1B1B1E;   /* nested/hover surface */
+  --border: #2A2A2E;
+  --border-soft: #1E1E21;
+  --text: #F5F5F6;
+  --text-muted: #9B9BA1;
+  --text-faint: #6B6B70;
 
-  --teal: #4FA69B;
-  --teal-dim: #2E4C48;
-  --amber: #E3A857;
-  --amber-dim: #4A3D28;
-  --red: #D9636B;
-  --red-dim: #4A2C30;
+  --teal: #F5F5F6;             /* primary accent = white/near-white, not a color */
+  --teal-dim: #2A2A2E;
+  --amber: #C9C9CD;            /* secondary emphasis = light gray, not amber */
+  --amber-dim: #232326;
+  --red: #E5484D;              /* the ONE real color — reserved for warnings/problems */
+  --red-dim: #2E1A1B;
+  --green: #F5F5F6;            /* "positive" also reads as white/neutral, not green */
+  --green-dim: #1E1E21;
 
-  --font-display: 'Space Grotesk', sans-serif;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  --font-display: 'Inter', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -34,18 +41,13 @@ html, body, #root {
 
 body {
   background: var(--ink);
-  background-image:
-    linear-gradient(rgba(46, 52, 64, 0.55) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(46, 52, 64, 0.55) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--teal-dim);
+  background: var(--surface-raised);
   color: var(--text);
 }
 
@@ -59,7 +61,7 @@ a {
 }
 
 *:focus-visible {
-  outline: 2px solid var(--teal);
+  outline: 2px solid var(--text);
   outline-offset: 2px;
 }
 
