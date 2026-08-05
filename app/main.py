@@ -1,4 +1,5 @@
 import io
+from typing import Optional
 import pandas as pd
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -23,6 +24,24 @@ app = FastAPI(title="DataLens")
 STATIC_DIR = Path(__file__).parent / "static"
 
 ALLOWED_EXTENSIONS = {".csv", ".tsv", ".xlsx", ".xls"}
+
+
+def _serialize_correlation_pair(pair) -> Optional[dict]:
+    """Shared serializer for CorrelationPair so the significance fields
+    (n, p_value, significant, strength, caveat) stay consistent between the
+    full pairs list and the strongest-positive/negative callouts."""
+    if pair is None:
+        return None
+    return {
+        "col1": pair.col1,
+        "col2": pair.col2,
+        "r": round(pair.r, 3),
+        "n": pair.n,
+        "p_value": round(pair.p_value, 4) if pair.p_value is not None else None,
+        "significant": pair.significant,
+        "strength": pair.strength,
+        "caveat": pair.caveat,
+    }
 
 
 def _run_v2_pipeline(df: pd.DataFrame) -> dict:
@@ -98,22 +117,9 @@ def _run_v2_pipeline(df: pd.DataFrame) -> dict:
             "overall_quality_score": quality_report.overall_quality_score,
         },
         "correlation_center": {
-            "pairs": [
-                {"col1": p.col1, "col2": p.col2, "r": round(p.r, 3)}
-                for p in correlation_report["pairs"]
-            ],
-            "strongest_positive": (
-                {"col1": correlation_report["strongest_positive"].col1,
-                 "col2": correlation_report["strongest_positive"].col2,
-                 "r": round(correlation_report["strongest_positive"].r, 3)}
-                if correlation_report["strongest_positive"] else None
-            ),
-            "strongest_negative": (
-                {"col1": correlation_report["strongest_negative"].col1,
-                 "col2": correlation_report["strongest_negative"].col2,
-                 "r": round(correlation_report["strongest_negative"].r, 3)}
-                if correlation_report["strongest_negative"] else None
-            ),
+            "pairs": [_serialize_correlation_pair(p) for p in correlation_report["pairs"]],
+            "strongest_positive": _serialize_correlation_pair(correlation_report["strongest_positive"]),
+            "strongest_negative": _serialize_correlation_pair(correlation_report["strongest_negative"]),
         },
     }
 

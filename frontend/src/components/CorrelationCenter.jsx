@@ -1,3 +1,8 @@
+function formatPValue(p) {
+  if (p === null || p === undefined) return null;
+  return p < 0.001 ? 'p < 0.001' : `p = ${p.toFixed(3)}`;
+}
+
 function PairCard({ pair, label, tone }) {
   if (!pair) return null;
   return (
@@ -6,7 +11,14 @@ function PairCard({ pair, label, tone }) {
         {label}
       </span>
       <p className="corr-callout-text">{pair.col1} ↔ {pair.col2}</p>
-      <span className="corr-callout-r mono">r = {pair.r.toFixed(2)}</span>
+      <div className="corr-callout-stats">
+        <span className="corr-callout-r mono">r = {pair.r.toFixed(2)}</span>
+        {pair.p_value !== null && pair.p_value !== undefined && (
+          <span className="corr-callout-r mono">{formatPValue(pair.p_value)}</span>
+        )}
+        <span className="corr-callout-r mono">n = {pair.n}</span>
+      </div>
+      {pair.caveat && <p className="corr-caveat">{pair.caveat}</p>}
     </div>
   );
 }
@@ -48,10 +60,16 @@ export default function CorrelationCenter({ correlationCenter, tickNum }) {
           <span className="dq-block-title">All notable relationships</span>
           {pairs.map((p, i) => (
             <div key={i} className="corr-list-row">
-              <span className="corr-list-pair">{p.col1} ↔ {p.col2}</span>
-              <span className="corr-list-r mono" style={{ color: p.r > 0 ? 'var(--teal)' : 'var(--red)' }}>
-                {p.r.toFixed(2)}
-              </span>
+              <div className="corr-list-main">
+                <span className="corr-list-pair">{p.col1} ↔ {p.col2}</span>
+                {p.caveat && <span className="corr-list-caveat">{p.caveat}</span>}
+              </div>
+              <div className="corr-list-stats">
+                <span className="corr-list-n mono">n={p.n}</span>
+                <span className="corr-list-r mono" style={{ color: p.r > 0 ? 'var(--teal)' : 'var(--red)' }}>
+                  {p.r.toFixed(2)}
+                </span>
+              </div>
             </div>
           ))}
         </div>
