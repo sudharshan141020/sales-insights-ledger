@@ -13,6 +13,7 @@ import CorrelationCenter from './components/CorrelationCenter';
 import WorkflowSteps from './components/WorkflowSteps';
 import TopBar from './components/TopBar';
 import { analyzeFile, analyzeCombined, loadDemoFile } from './api';
+import { exportAnalysisToExcel } from './exportReport';
 
 function makeId() {
   return (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -225,6 +226,16 @@ export default function App() {
                 Merged from {activeSession.result.source_files?.join(', ')}
               </p>
             )}
+
+            <div className="export-row">
+              <button
+                className="export-btn"
+                onClick={() => exportAnalysisToExcel(activeSession)}
+                title="Download this analysis as an Excel workbook"
+              >
+                ↓ Export report (.xlsx)
+              </button>
+            </div>
 
             <ExecutiveSummary fileName={activeSession.fileName} v2={activeSession.result.v2} />
 

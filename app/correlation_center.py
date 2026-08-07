@@ -12,8 +12,9 @@ trust the coefficient. A strong r on 6 rows is noise, not a finding — this
 is what stops the tool from reporting spurious correlations as real ones.
 """
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 import math
+import numpy as np
 import pandas as pd
 
 from app.understanding import DatasetProfile
@@ -138,3 +139,77 @@ def analyze_correlations(df: pd.DataFrame, profile: DatasetProfile, min_r: float
         "strongest_positive": _pick(positive, lambda lst: max(lst, key=lambda p: p.r)),
         "strongest_negative": _pick(negative, lambda lst: min(lst, key=lambda p: p.r)),
     }
+
+
+# ---------------------------------------------------------------------------
+# Multicollinearity (VIF)
+# ---------------------------------------------------------------------------
+# Separate from pairwise correlation: two measures can each look fine in
+# isolation but still be redundant once you account for every other measure
+# predicting them. VIF (Variance Inflation Factor) catches that. Computed
+# via plain least-squares (numpy), no sklearn/statsmodels needed.
+
+VIF_MODERATE = 5.0   # conventional analytics thresholds
+VIF_SEVERE = 10.0
+
+
+@dataclass
+class VifResult:
+    column: str
+    vif: float
+    severity: str  # "ok" | "moderate" | "severe"
+    note: str
+
+
+def _vif_severity(vif: float) -> Tuple[str, str]:
+    if vif >= VIF_SEVERE:
+        return "severe", "Highly redundant with the other measures — consider dropping or combining it."
+    if vif >= VIF_MODERATE:
+        return "moderate", "Meaningfully overlaps with the other measures — worth a second look."
+    return "ok", "Contributes independent information."
+
+
+def analyze_multicollinearity(df: pd.DataFrame, profile: DatasetProfile, min_measures: int = 3) -> dict:
+    """For each numeric measure, regress it on all the other measures and
+    compute VIF = 1 / (1 - R^2). A high VIF means this measure is largely
+    predictable from the others -- i.e. it's not adding independent signal,
+    which matters if someone downstream tries to use these as regression
+    predictors. Needs at least 3 measures (VIF is meaningless with only 2 --
+    that's just the pairwise correlation again) and at least 10 usable rows.
+    """
+    cols = [m.column for m in profile.measures]
+    if len(cols) < min_measures:
+        return {"results": [], "note": None}
+
+    usable = df[cols].dropna()
+    if len(usable) < 10:
+        return {"results": [], "note": "Not enough complete rows across all measures to check for redundancy."}
+
+    # Drop any column that's constant in the usable subset -- undefined R^2.
+    usable = usable.loc[:, usable.std(ddof=0) > 0]
+    cols = list(usable.columns)
+    if len(cols) < min_measures:
+        return {"results": [], "note": None}
+
+    results = []
+    X_full = usable.to_numpy(dtype=float)
+    for i, col in enumerate(cols):
+        y = X_full[:, i]
+        others = np.delete(X_full, i, axis=1)
+        others_with_intercept = np.column_stack([np.ones(len(others)), others])
+        try:
+            coeffs, _, _, _ = np.linalg.lstsq(others_with_intercept, y, rcond=None)
+            y_pred = others_with_intercept @ coeffs
+            ss_res = np.sum((y - y_pred) ** 2)
+            ss_tot = np.sum((y - y.mean()) ** 2)
+            r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
+            r_squared = max(0.0, min(0.999999, r_squared))  # guard divide-by-zero below
+            vif = 1 / (1 - r_squared)
+        except np.linalg.LinAlgError:
+            continue
+
+        severity, note = _vif_severity(vif)
+        results.append(VifResult(column=col, vif=float(vif), severity=severity, note=note))
+
+    results.sort(key=lambda r: r.vif, reverse=True)
+    return {"results": results, "note": None}

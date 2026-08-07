@@ -24,7 +24,9 @@ function PairCard({ pair, label, tone }) {
 }
 
 export default function CorrelationCenter({ correlationCenter, tickNum }) {
-  const { pairs, strongest_positive, strongest_negative } = correlationCenter;
+  const { pairs, strongest_positive, strongest_negative, multicollinearity } = correlationCenter;
+  const vifResults = multicollinearity?.results || [];
+  const flaggedVif = vifResults.filter((v) => v.severity !== 'ok');
 
   if (!pairs?.length) {
     return (
@@ -70,6 +72,32 @@ export default function CorrelationCenter({ correlationCenter, tickNum }) {
                   {p.r.toFixed(2)}
                 </span>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {vifResults.length > 0 && (
+        <div className="corr-vif">
+          <span className="dq-block-title">Redundancy check (multicollinearity)</span>
+          <p className="dim-sub" style={{ margin: '2px 0 12px' }}>
+            {flaggedVif.length > 0
+              ? 'Some measures overlap heavily with the others combined, not just in pairs.'
+              : 'Each measure adds independent information — no redundancy detected.'}
+          </p>
+          {vifResults.map((v, i) => (
+            <div key={i} className="corr-vif-row">
+              <span className="corr-vif-col">{v.column}</span>
+              <span
+                className="corr-vif-badge"
+                style={{
+                  color: v.severity === 'severe' ? 'var(--red)' : v.severity === 'moderate' ? 'var(--amber)' : 'var(--text-faint)',
+                  borderColor: v.severity === 'severe' ? 'var(--red-dim)' : v.severity === 'moderate' ? 'var(--amber-dim)' : 'var(--border-soft)',
+                }}
+              >
+                VIF {v.vif.toFixed(1)}
+              </span>
+              <span className="corr-vif-note">{v.note}</span>
             </div>
           ))}
         </div>

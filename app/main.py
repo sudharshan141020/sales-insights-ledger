@@ -17,7 +17,7 @@ from app.understanding import understand_dataset
 from app.executor_v2 import execute_all as execute_all_v2
 from app.analyzers.registry import get_analyzer
 from app.data_quality import analyze_data_quality
-from app.correlation_center import analyze_correlations
+from app.correlation_center import analyze_correlations, analyze_multicollinearity
 
 app = FastAPI(title="DataLens")
 
@@ -78,6 +78,7 @@ def _run_v2_pipeline(df: pd.DataFrame) -> dict:
     story = analyzer.generate_story()
     quality_report = analyze_data_quality(df_exec, profile)
     correlation_report = analyze_correlations(df_exec, profile)
+    multicollinearity_report = analyze_multicollinearity(df_exec, profile)
 
     return {
         "profile": {
@@ -120,6 +121,13 @@ def _run_v2_pipeline(df: pd.DataFrame) -> dict:
             "pairs": [_serialize_correlation_pair(p) for p in correlation_report["pairs"]],
             "strongest_positive": _serialize_correlation_pair(correlation_report["strongest_positive"]),
             "strongest_negative": _serialize_correlation_pair(correlation_report["strongest_negative"]),
+            "multicollinearity": {
+                "results": [
+                    {"column": v.column, "vif": round(v.vif, 2), "severity": v.severity, "note": v.note}
+                    for v in multicollinearity_report["results"]
+                ],
+                "note": multicollinearity_report["note"],
+            },
         },
     }
 
