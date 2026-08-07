@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* True minimalist black & white — color is used ONLY where it carries
-     real meaning (a high-priority warning), never decoratively. */
+  /* Dark theme (default) — a night-sky palette: near-black with a single
+     real accent color reserved for warnings, everything else neutral. */
   --ink: #0A0A0B;              /* page background — near black */
   --surface: #131315;          /* card background */
   --surface-raised: #1B1B1E;   /* nested/hover surface */
@@ -20,6 +20,18 @@
   --red-dim: #2E1A1B;
   --green: #F5F5F6;            /* "positive" also reads as white/neutral, not green */
   --green-dim: #1E1E21;
+  --on-accent: #0A0A0B;        /* text/icon color drawn on top of a filled --teal button */
+
+  /* Chart series palette, light -> dark (used via CSS var so it can be
+     swapped per-theme without touching chart component code) */
+  --chart-1: #F5F5F6;
+  --chart-2: #C9C9CD;
+  --chart-3: #9B9BA1;
+  --chart-4: #71717A;
+  --chart-5: #52525B;
+  --chart-6: #3F3F46;
+  --chart-7: #27272A;
+  --chart-8: #18181B;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.45);
@@ -27,6 +39,42 @@
   --font-display: 'Inter', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Light theme — the sky-and-sun palette, applied via data-theme="light"
+   on <html>. Same token names throughout the app, so no component needs
+   to know which theme is active; only these values change. */
+:root[data-theme='light'] {
+  --ink: #F3F8FE;
+  --surface: #FFFFFF;
+  --surface-raised: #EAF3FC;
+  --border: #D7E6F5;
+  --border-soft: #E7F0FA;
+  --text: #16233A;
+  --text-muted: #51637D;
+  --text-faint: #8FA0B8;
+
+  --teal: #2E6EB0;              /* sky blue — the primary accent */
+  --teal-dim: #DCEAF8;
+  --amber: #C1811A;             /* sun gold — secondary emphasis */
+  --amber-dim: #FBEFD7;
+  --red: #C93B41;
+  --red-dim: #FBE4E5;
+  --green: #2E6EB0;              /* kept mapped to the same accent, on purpose */
+  --green-dim: #DCEAF8;
+  --on-accent: #FFFFFF;
+
+  --chart-1: #2E6EB0;
+  --chart-2: #4F8FCB;
+  --chart-3: #7CACD9;
+  --chart-4: #A6C7E5;
+  --chart-5: #C1811A;
+  --chart-6: #D9A24B;
+  --chart-7: #51637D;
+  --chart-8: #8FA0B8;
+
+  --shadow-card: 0 1px 2px rgba(22, 35, 58, 0.06), 0 1px 3px rgba(22, 35, 58, 0.08);
+  --shadow-raised: 0 8px 24px rgba(22, 35, 58, 0.12);
 }
 
 * {
@@ -44,6 +92,7 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 ::selection {
@@ -53,6 +102,7 @@ body {
 
 button {
   font-family: inherit;
+  color: inherit;
   cursor: pointer;
 }
 

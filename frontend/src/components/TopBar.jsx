@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ThemeToggle from './ThemeToggle';
 
 // EDIT THIS before deploying — point it at your actual repo.
 const GITHUB_URL = 'https://github.com/YOUR_USERNAME/datalens';
@@ -29,6 +30,7 @@ export default function TopBar() {
       <a className="topbar-link" href={GITHUB_URL} target="_blank" rel="noreferrer">
         GitHub ↗
       </a>
+      <ThemeToggle />
     </nav>
   );
 }

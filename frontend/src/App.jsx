@@ -12,7 +12,8 @@ import DataQualityCenter from './components/DataQualityCenter';
 import CorrelationCenter from './components/CorrelationCenter';
 import WorkflowSteps from './components/WorkflowSteps';
 import TopBar from './components/TopBar';
-import { analyzeFile, analyzeCombined, loadDemoFile } from './api';
+import ExportMenu from './components/ExportMenu';
+import { analyzeFile, analyzeCombined, loadDemoFile, exportPdf } from './api';
 import { exportAnalysisToExcel } from './exportReport';
 
 function makeId() {
@@ -34,6 +35,8 @@ export default function App() {
   const [combineMode, setCombineMode] = useState(false);
   const [selectedForCombine, setSelectedForCombine] = useState([]);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
 
   const handleFilesSelected = (files, errorMsg) => {
     setUploadError(errorMsg || null);
@@ -84,6 +87,18 @@ export default function App() {
     setSessions((prev) => prev.map((s) => (
       s.id === id ? { ...s, pinned: !s.pinned } : s
     )));
+  };
+
+  const handleExportPdf = async (session) => {
+    setPdfError(null);
+    setPdfLoading(true);
+    try {
+      await exportPdf(session.fileName, session.result.v2);
+    } catch (err) {
+      setPdfError(err.message || 'The PDF report could not be generated.');
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const handleToggleCombineMode = () => {
@@ -228,14 +243,13 @@ export default function App() {
             )}
 
             <div className="export-row">
-              <button
-                className="export-btn"
-                onClick={() => exportAnalysisToExcel(activeSession)}
-                title="Download this analysis as an Excel workbook"
-              >
-                ↓ Export report (.xlsx)
-              </button>
+              <ExportMenu
+                onExportExcel={() => exportAnalysisToExcel(activeSession)}
+                onExportPdf={() => handleExportPdf(activeSession)}
+                pdfLoading={pdfLoading}
+              />
             </div>
+            {pdfError && <p className="export-error">{pdfError}</p>}
 
             <ExecutiveSummary fileName={activeSession.fileName} v2={activeSession.result.v2} />
 

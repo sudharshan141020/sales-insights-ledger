@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DataLens — Universal Data Intelligence</title>
+    <script>
+      // Applied before paint so switching pages/reloading never flashes
+      // the wrong theme for a frame.
+      (function () {
+        try {
+          var saved = localStorage.getItem('datalens-theme');
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.dataset.theme = saved;
+          } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.documentElement.dataset.theme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

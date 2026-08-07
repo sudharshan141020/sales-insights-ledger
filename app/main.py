@@ -4,7 +4,8 @@ import pandas as pd
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from pydantic import BaseModel
 
 from app.column_detector import detect_columns
 from app.kpi import prepare, compute_kpis, timeseries_monthly, breakdown_by, all_breakdowns, combine_dataframes
@@ -18,6 +19,7 @@ from app.executor_v2 import execute_all as execute_all_v2
 from app.analyzers.registry import get_analyzer
 from app.data_quality import analyze_data_quality
 from app.correlation_center import analyze_correlations, analyze_multicollinearity
+from app.pdf_report import build_pdf_report
 
 app = FastAPI(title="DataLens")
 
@@ -326,6 +328,33 @@ async def analyze_combined(files: list[UploadFile] = File(...)):
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+class PdfExportRequest(BaseModel):
+    file_name: str
+    v2: dict
+
+
+@app.post("/api/export/pdf")
+def export_pdf(payload: PdfExportRequest):
+    """Stateless PDF export: the frontend already has the full analysis
+    result in memory (same shape /api/analyze returns), so it sends that
+    straight back here to be rendered. Nothing about the original file or
+    its data is stored server-side -- this matches the rest of the app's
+    'nothing is persisted' design, it's just a formatter."""
+    if not payload.v2:
+        raise HTTPException(400, "No analysis data provided.")
+    try:
+        pdf_bytes = build_pdf_report(payload.file_name, payload.v2)
+    except Exception:
+        raise HTTPException(500, "Could not generate the PDF report.")
+
+    safe_name = "".join(c for c in payload.file_name.rsplit(".", 1)[0] if c.isalnum() or c in ("-", "_")) or "datalens-report"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}_report.pdf"'},
+    )
 
 
 # ---- Serve the built frontend (if present) ----

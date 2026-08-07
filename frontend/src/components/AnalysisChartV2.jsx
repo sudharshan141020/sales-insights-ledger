@@ -15,7 +15,7 @@ function formatAxisValue(v) {
   return v;
 }
 
-const PALETTE = ['#F5F5F6', '#C9C9CD', '#9B9BA1', '#71717A', '#52525B', '#3F3F46', '#27272A', '#18181B'];
+const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)', 'var(--chart-8)'];
 
 function ChartTooltip({ active, payload, label, valueLabel, isCurrency }) {
   if (!active || !payload?.length) return null;
@@ -119,12 +119,13 @@ function ScatterView({ analysis }) {
   const groupColor = (g) => PALETTE[groups.indexOf(g) % PALETTE.length];
 
   return (
-    <ResponsiveContainer width="100%" height={hasGroups ? 320 : 280}>
-      <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+    <ResponsiveContainer width="100%" height={hasGroups ? 350 : 300}>
+      <ScatterChart margin={{ top: hasGroups ? 30 : 10, right: 24, left: 16, bottom: 40 }}>
         <CartesianGrid stroke="var(--border-soft)" />
         <XAxis type="number" dataKey="x" name={analysis.x_label} stroke="var(--text-faint)" fontSize={12} fontFamily="var(--font-mono)" tickFormatter={formatAxisValue}
-          label={{ value: analysis.x_label, position: 'insideBottom', offset: -10, fill: 'var(--text-muted)', fontSize: 12 }} />
-        <YAxis type="number" dataKey="y" name={analysis.y_label} stroke="var(--text-faint)" fontSize={12} fontFamily="var(--font-mono)" tickFormatter={formatAxisValue} />
+          label={{ value: analysis.x_label, position: 'bottom', offset: 18, fill: 'var(--text-muted)', fontSize: 12.5, fontFamily: 'var(--font-body)' }} />
+        <YAxis type="number" dataKey="y" name={analysis.y_label} stroke="var(--text-faint)" fontSize={12} fontFamily="var(--font-mono)" tickFormatter={formatAxisValue} width={60}
+          label={{ value: analysis.y_label, angle: -90, position: 'insideLeft', offset: -6, fill: 'var(--text-muted)', fontSize: 12.5, fontFamily: 'var(--font-body)', style: { textAnchor: 'middle' } }} />
         <ZAxis range={[20, 20]} />
         <Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }) => {
           if (!active || !payload?.length) return null;
@@ -149,7 +150,10 @@ function ScatterView({ analysis }) {
               />
             ))}
             <Legend
-              wrapperStyle={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--text-muted)', paddingTop: 8 }}
+              verticalAlign="top"
+              align="right"
+              height={26}
+              wrapperStyle={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--text-muted)' }}
             />
           </>
         ) : (

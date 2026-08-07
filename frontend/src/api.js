@@ -51,3 +51,31 @@ export async function loadDemoFile() {
   const blob = await res.blob();
   return new File([blob], 'demo-sales-data.csv', { type: 'text/csv' });
 }
+
+export async function exportPdf(fileName, v2) {
+  const res = await fetch(`${API_BASE}/api/export/pdf`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_name: fileName, v2 }),
+  });
+
+  if (!res.ok) {
+    let message = 'The PDF report could not be generated.';
+    try {
+      const body = await res.json();
+      if (typeof body.detail === 'string') message = body.detail;
+    } catch (e) { /* non-JSON error body -- keep the default message */ }
+    throw new Error(message);
+  }
+
+  const blob = await res.blob();
+  const safeName = (fileName || 'datalens-report').replace(/\.[^/.]+$/, '').replace(/[^\w-]+/g, '_');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName}_report.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
