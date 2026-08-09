@@ -170,11 +170,13 @@ def build_pdf_report(file_name: str, v2: dict) -> bytes:
             summary_rows.append(["Constant columns", ", ".join(const_cols)])
         story.append(_table(summary_rows, [2.2 * inch, 3.3 * inch], ss))
 
-        missing = dq.get("missing_by_column") or {}
+        missing = dq.get("missing_by_column") or []
         if missing:
             story.append(Spacer(1, 10))
             story.append(Paragraph("Missing values by column", ss["Body"]))
-            rows = [["Column", "Missing %"]] + [[_cell(c, ss), _cell(p, ss)] for c, p in missing.items()]
+            rows = [["Column", "Missing %"]] + [
+                [_cell(m.get("column", ""), ss), _cell(m.get("missing_pct", ""), ss)] for m in missing
+            ]
             story.append(_table(rows, [3.3 * inch, 2.2 * inch], ss))
 
     # --- Correlations ---

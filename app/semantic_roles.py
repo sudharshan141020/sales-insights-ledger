@@ -31,6 +31,17 @@ ROLE_KEYWORDS = {
     "DISCOUNT": ["discount", "coupon", "promo_code", "promo"],
     "QUANTITY": ["quantity", "qty", "units", "stock", "item_count"],
 
+    # --- Retail / inventory-specific (checked before the generic QUANTITY
+    # "stock" keyword and PRODUCT "sku" keyword, so a column literally named
+    # e.g. "stock_level" or "reorder_point" resolves here via exact match
+    # rather than falling into the broader QUANTITY bucket) ---
+    "INVENTORY_LEVEL": ["stock_level", "inventory_level", "stock_on_hand", "on_hand_quantity", "on_hand", "inventory"],
+    "REORDER_POINT": ["reorder_point", "reorder_level", "restock_threshold", "reorder_qty"],
+    "SUPPLIER": ["supplier_id", "supplier_name", "supplier", "vendor_id", "vendor_name", "vendor"],
+    "STORE": ["store_id", "store_name", "store", "outlet_id", "outlet", "branch_id", "branch"],
+    "WAREHOUSE": ["warehouse_id", "warehouse_name", "warehouse", "distribution_center", "dc_id"],
+    "UNIT_COST": ["unit_cost", "cost_price", "cogs", "cost_of_goods", "cost_per_unit"],
+
     # --- Time ---
     "DATE": [
         "order_date", "admission_date", "discharge_date", "enrolled_date",

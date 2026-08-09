@@ -5,8 +5,8 @@ analytical report in seconds: automatic domain detection, the 3 most
 valuable analyses for that specific dataset, a plain-English narrative
 story, statistically-validated correlations, and concrete, prioritized
 recommendations. Not a generic BI dashboard — the analysis itself adapts
-to whether it's looking at healthcare, sales, education, HR, traffic, or
-finance data.
+to whether it's looking at healthcare, sales, retail, education, HR,
+traffic, or finance data.
 
 **[Live demo →](#)** &nbsp;·&nbsp; *(add your Render URL here before sharing this repo)*
 
@@ -20,8 +20,8 @@ dataset it's looking at, decides what's worth analyzing for that domain
 specifically, and flags when a finding shouldn't be trusted.
 
 - **Domain-aware, not one-size-fits-all.** Every uploaded file is scored
-  against 6 domain profiles (healthcare, sales, education, HR, traffic,
-  finance) based on which semantic column roles are present, and the
+  against 7 domain profiles (healthcare, sales, retail, education, HR,
+  traffic, finance) based on which semantic column roles are present, and the
   entire analysis — which KPIs matter, which charts get generated, what
   "weak points" even means — adapts to the result.
 - **Statistically honest.** Every correlation is reported with its actual
@@ -42,7 +42,7 @@ specifically, and flags when a finding shouldn't be trusted.
 
 - Automatic semantic column detection (works on files it's never seen —
   no fixed schema)
-- Domain detection across 6 verticals with a confidence score
+- Domain detection across 7 verticals with a confidence score
 - Auto-generated dashboard: the 3 most important analyses, picked and
   chart-typed automatically, with reasoning for each choice
 - Narrative "Story" mode — findings chained into a Trend → Breakdown →

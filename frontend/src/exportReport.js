@@ -74,8 +74,8 @@ export function exportAnalysisToExcel(session) {
   // --- Data Quality ---
   const dq = v2.data_quality;
   if (dq) {
-    const missingRows = Object.entries(dq.missing_by_column || {}).map(([col, pct]) => ({
-      Column: col, 'Missing %': pct,
+    const missingRows = (dq.missing_by_column || []).map((m) => ({
+      Column: m.column, 'Missing %': m.missing_pct,
     }));
     const summaryRows = [
       { Metric: 'Duplicate rows', Value: dq.duplicate_row_count },

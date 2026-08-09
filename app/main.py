@@ -21,7 +21,40 @@ from app.data_quality import analyze_data_quality
 from app.correlation_center import analyze_correlations, analyze_multicollinearity
 from app.pdf_report import build_pdf_report
 
-app = FastAPI(title="DataLens")
+import math
+from starlette.responses import JSONResponse as _StarletteJSONResponse
+
+
+def _sanitize_json(obj):
+    """Recursively replace NaN/Infinity floats with None.
+
+    Real-world CSVs are often messy -- columns that are mostly or entirely
+    empty are common (stray unnamed columns, partial summary stats pasted
+    into the same sheet, etc.), and pandas computations over them (mean,
+    std, correlation...) naturally produce NaN. Python's json.dumps as used
+    by Starlette's JSONResponse sets allow_nan=False, so a single stray NaN
+    anywhere in the response crashes the ENTIRE request with a raw 500 and
+    an unparseable body -- the frontend then fails trying to JSON.parse an
+    "Internal Server Error" plain-text response. Rather than chase down
+    every individual computation that could produce a NaN, this sanitizes
+    the whole response once at the API boundary."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_json(v) for v in obj]
+    return obj
+
+
+class SafeJSONResponse(_StarletteJSONResponse):
+    def render(self, content) -> bytes:
+        return super().render(_sanitize_json(content))
+
+
+app = FastAPI(title="DataLens", default_response_class=SafeJSONResponse)
 
 STATIC_DIR = Path(__file__).parent / "static"
 

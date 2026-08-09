@@ -31,6 +31,10 @@ DOMAIN_SIGNALS = {
     "sales": {
         "PRODUCT": 3, "DISCOUNT": 3, "CUSTOMER": 2,
     },
+    "retail": {
+        "INVENTORY_LEVEL": 3, "REORDER_POINT": 3, "SUPPLIER": 3,
+        "STORE": 2, "WAREHOUSE": 2, "UNIT_COST": 2,
+    },
     "education": {
         "SUBJECT": 3, "SCORE": 3, "ATTENDANCE": 2, "STUDENT": 2, "TEACHER": 2,
     },

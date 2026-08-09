@@ -3,7 +3,7 @@
 ## What it is
 A universal, rule-based data analytics platform (originally "Sales Insights
 Ledger," renamed to **DataLens**). Upload any CSV/Excel file → it detects
-the domain (healthcare, sales, education, HR, traffic, finance, or generic),
+the domain (healthcare, sales, retail, education, HR, traffic, finance, or generic),
 understands the data's structure, and produces a full analysis: dataset
 profile, top-3 key analyses, a narrative "Story," findings, weak
 points/recommendations, data quality report, and a correlation center.
@@ -113,7 +113,7 @@ pin, combine), `AnalysisChartV2` (renders all 7 chart types).
   absolute paths into it. Delete and recreate `venv` after any move.
 
 ## What's NOT built yet (from the roadmap discussions)
-- More domains beyond the current 6 (Retail, Manufacturing, Agriculture,
+- More domains beyond the current 7 (Manufacturing, Agriculture,
   Sports, Marketing, Customer Support)
 - Global search across charts/insights/findings
 - Interactive filtering (date/region/category filters live-updating charts)
@@ -129,6 +129,17 @@ pin, combine), `AnalysisChartV2` (renders all 7 chart types).
 - Sunburst charts, map visualizations (mentioned as "future" in specs)
 
 ## Recently added (worth knowing about if picking this back up)
+- **Retail domain** (`analyzers/retail_analyzer.py`): 7th domain, added purely
+  additively per the plugin architecture -- new semantic roles
+  (INVENTORY_LEVEL, REORDER_POINT, SUPPLIER, STORE, WAREHOUSE, UNIT_COST) in
+  `semantic_roles.py`, one new entry in `domains.py`'s DOMAIN_SIGNALS, one
+  new analyzer file, one registry line. Deliberately kept distinct from
+  "sales" (inventory/supply-chain signals vs. transaction/discount signals)
+  so datasets with both sets of columns resolve to whichever has the
+  stronger weighted signal rather than colliding. Verified: a synthetic
+  retail dataset (stock level, reorder point, supplier, store columns)
+  detects as "retail" at full confidence; the existing sales demo dataset
+  still detects as "sales" -- no regression.
 - **Correlation significance + multicollinearity** (`correlation_center.py`):
   every correlation now carries `n`, `p_value`, `significant`, `strength`,
   and a plain-English `caveat`. New `analyze_multicollinearity()` function
