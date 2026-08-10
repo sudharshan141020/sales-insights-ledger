@@ -111,6 +111,27 @@ def _is_chartable(cardinality: int, row_count: int) -> bool:
     return 2 <= cardinality <= min(30, max(row_count * 0.5, 2))
 
 
+MIN_NONNULL_FRACTION_FOR_ANALYSIS = 0.10  # require at least 10% real values...
+MIN_NONNULL_COUNT_FOR_ANALYSIS = 5        # ...and at least 5 real values regardless of dataset size
+
+
+def _is_usable_column(df: pd.DataFrame, col: str) -> bool:
+    """A column that's almost entirely empty can't meaningfully be "the
+    metric" or "the breakdown" for any analysis, even if its name matches a
+    known semantic role -- e.g. a column named "Sales" that's 99.9% NaN
+    (a handful of stray values left over from a pasted-in summary table,
+    say) shouldn't get treated the same as a real, populated Sales column.
+    Same category of guard as the existing identifier-column exclusion:
+    role classification is name-based and doesn't know how much real data
+    backs the column, so this is checked separately, after the fact."""
+    non_null = int(df[col].notna().sum())
+    if non_null < MIN_NONNULL_COUNT_FOR_ANALYSIS:
+        return False
+    if len(df) and (non_null / len(df)) < MIN_NONNULL_FRACTION_FOR_ANALYSIS:
+        return False
+    return True
+
+
 def understand_dataset(df: pd.DataFrame) -> DatasetProfile:
     """
     The single entry point for the entire downstream pipeline. Everything
@@ -119,7 +140,14 @@ def understand_dataset(df: pd.DataFrame) -> DatasetProfile:
     dataframe.
     """
     semantic_roles = classify_columns(df)
-    domain_result = detect_domain(semantic_roles)
+    # Domain scoring only considers columns with enough real data to matter --
+    # otherwise a column that's 97% empty but happens to be named e.g.
+    # "diagnosis" can swing the entire dataset's domain classification to
+    # "healthcare" at full confidence off a handful of stray values. The
+    # full (unfiltered) semantic_roles dict is still used for everything
+    # else below -- this filtering is specific to domain detection.
+    domain_scoring_roles = {c: info for c, info in semantic_roles.items() if _is_usable_column(df, c)}
+    domain_result = detect_domain(domain_scoring_roles)
     numeric_cols = set(df.select_dtypes(include="number").columns)
 
     row_count = int(len(df))
@@ -145,7 +173,7 @@ def understand_dataset(df: pd.DataFrame) -> DatasetProfile:
     ordered_roles = ["FINANCIAL_METRIC"] + [r for r in MEASURE_ROLES if r != "FINANCIAL_METRIC"]
     for role in ordered_roles:
         for col, info in semantic_roles.items():
-            if info["role"] == role and col in numeric_cols:
+            if info["role"] == role and col in numeric_cols and _is_usable_column(df, col):
                 is_primary = not primary_set
                 measures.append(Measure(column=col, role=role, aggregation=MEASURE_ROLES[role], is_primary=is_primary))
                 if is_primary:
@@ -156,6 +184,8 @@ def understand_dataset(df: pd.DataFrame) -> DatasetProfile:
     for col, info in semantic_roles.items():
         role = info["role"]
         if role not in DIMENSION_ROLES:
+            continue
+        if not _is_usable_column(df, col):
             continue
         cardinality = int(df[col].nunique())
         dimensions.append(Dimension(

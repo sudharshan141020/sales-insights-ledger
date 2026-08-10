@@ -161,10 +161,13 @@ def build_pdf_report(file_name: str, v2: dict) -> bytes:
         for label, key in [
             ("Duplicate rows", "duplicate_row_count"),
             ("Duplicate row %", "duplicate_row_pct"),
-            ("Overall quality score", "overall_quality_score"),
+            ("Overall quality score (raw file)", "overall_quality_score"),
+            ("Usable data score (analyzed columns)", "usable_quality_score"),
         ]:
             if dq.get(key) is not None:
                 summary_rows.append([label, str(dq[key])])
+        if dq.get("usable_column_count") is not None and dq.get("total_column_count") is not None:
+            summary_rows.append(["Columns actually analyzed", f"{dq['usable_column_count']} of {dq['total_column_count']}"])
         const_cols = dq.get("constant_columns") or []
         if const_cols:
             summary_rows.append(["Constant columns", ", ".join(const_cols)])

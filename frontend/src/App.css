@@ -1447,6 +1447,22 @@
   text-align: center;
 }
 
+.dq-score-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.dq-usable-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-faint);
+  text-align: center;
+}
+
 .dq-details {
   flex: 1;
   min-width: 0;

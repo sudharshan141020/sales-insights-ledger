@@ -24,6 +24,16 @@ class DataQualityReport:
     outlier_summary: list = field(default_factory=list)
     dtype_breakdown: dict = field(default_factory=dict)
     overall_quality_score: float = 100.0
+    # "Usable data" score: computed only over the columns that actually feed
+    # the analysis (measures + dimensions + the date column, if any) rather
+    # than every column in the raw file. A file can carry a lot of empty or
+    # junk columns (stray unnamed columns, partial summary stats pasted into
+    # the same sheet) that tank the raw score without meaning the columns
+    # actually being analyzed are unreliable -- this gives that distinction
+    # a number instead of leaving it invisible.
+    usable_quality_score: float = 100.0
+    usable_column_count: int = 0
+    total_column_count: int = 0
 
 
 def _quality_score(missing_frac: float, dup_frac: float, n_constant: int, n_cols: int) -> float:
@@ -81,6 +91,21 @@ def analyze_data_quality(df: pd.DataFrame, profile: DatasetProfile) -> DataQuali
     missing_frac_overall = df.isnull().mean().mean() if len(df.columns) else 0
     score = _quality_score(missing_frac_overall, dup_pct / 100, len(constant_columns), len(df.columns))
 
+    used_cols = {m.column for m in profile.measures} | {d.column for d in profile.dimensions}
+    date_col = next((c for c, r in profile.semantic_roles.items() if r == "DATE"), None)
+    if date_col:
+        used_cols.add(date_col)
+    used_cols = [c for c in used_cols if c in df.columns]
+
+    if used_cols:
+        used_missing_frac = df[used_cols].isnull().mean().mean()
+        used_constant_count = sum(1 for c in used_cols if c in constant_columns)
+        usable_score = _quality_score(used_missing_frac, dup_pct / 100, used_constant_count, len(used_cols))
+    else:
+        # Nothing was identified as a measure/dimension to analyze -- fall
+        # back to the raw score rather than claiming a usable subset exists.
+        usable_score = score
+
     return DataQualityReport(
         missing_by_column=missing_by_column,
         duplicate_row_count=dup_count,
@@ -90,4 +115,7 @@ def analyze_data_quality(df: pd.DataFrame, profile: DatasetProfile) -> DataQuali
         outlier_summary=outlier_summary,
         dtype_breakdown=dtype_breakdown,
         overall_quality_score=score,
+        usable_quality_score=usable_score,
+        usable_column_count=len(used_cols),
+        total_column_count=len(df.columns),
     )

@@ -40,7 +40,27 @@ def _normalize(col: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", col.strip().lower()).strip("_")
 
 
-def _exact_and_substring_matches(columns):
+MIN_NONNULL_FRACTION_FOR_MATCH = 0.10  # require at least 10% real values...
+MIN_NONNULL_COUNT_FOR_MATCH = 5        # ...and at least 5 real values regardless of dataset size
+
+
+def _is_usable_column(df: pd.DataFrame, col: str) -> bool:
+    """Same guard as understanding.py's _is_usable_column, duplicated here
+    rather than imported to keep this legacy module's dependencies as they
+    were (it doesn't otherwise import from understanding.py). A column
+    that's almost entirely empty shouldn't win a name match just because
+    it's called "Sales" or "Revenue" -- e.g. a handful of stray leftover
+    values from a summary table pasted into the same CSV as the real data
+    would otherwise get picked as THE revenue column."""
+    non_null = int(df[col].notna().sum())
+    if non_null < MIN_NONNULL_COUNT_FOR_MATCH:
+        return False
+    if len(df) and (non_null / len(df)) < MIN_NONNULL_FRACTION_FOR_MATCH:
+        return False
+    return True
+
+
+def _exact_and_substring_matches(columns, df):
     """
     Two-pass matcher across ALL columns at once (not per-column), so a real
     exact match (e.g. a column literally named 'Region') always wins over a
@@ -55,7 +75,7 @@ def _exact_and_substring_matches(columns):
     for role, hints in NAME_HINTS.items():
         for hint in hints:
             hint_norm = _normalize(hint)
-            match = next((c for c in columns if c not in assigned and norm_cols[c] == hint_norm), None)
+            match = next((c for c in columns if c not in assigned and norm_cols[c] == hint_norm and _is_usable_column(df, c)), None)
             if match:
                 mapping[role] = match
                 confidence[role] = "name"
@@ -70,7 +90,7 @@ def _exact_and_substring_matches(columns):
         for hint in hints:
             hint_norm = _normalize(hint)
             for c in columns:
-                if c in assigned:
+                if c in assigned or not _is_usable_column(df, c):
                     continue
                 if hint_norm in norm_cols[c] and len(hint_norm) > best_len:
                     best_col, best_len = c, len(hint_norm)
@@ -159,10 +179,13 @@ def detect_columns(df: pd.DataFrame) -> dict:
     numeric_measures = []
 
     columns = list(df.columns)
-    mapping, confidence, assigned = _exact_and_substring_matches(columns)
+    mapping, confidence, assigned = _exact_and_substring_matches(columns, df)
 
     for col in columns:
         if col in assigned:
+            continue
+        if not _is_usable_column(df, col):
+            unmapped.append(col)
             continue
         # no name hint matched -> dtype fallback
         guess = _dtype_fallback(df[col])

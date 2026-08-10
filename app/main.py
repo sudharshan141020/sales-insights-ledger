@@ -151,6 +151,9 @@ def _run_v2_pipeline(df: pd.DataFrame) -> dict:
             "outlier_summary": quality_report.outlier_summary,
             "dtype_breakdown": quality_report.dtype_breakdown,
             "overall_quality_score": quality_report.overall_quality_score,
+            "usable_quality_score": quality_report.usable_quality_score,
+            "usable_column_count": quality_report.usable_column_count,
+            "total_column_count": quality_report.total_column_count,
         },
         "correlation_center": {
             "pairs": [_serialize_correlation_pair(p) for p in correlation_report["pairs"]],

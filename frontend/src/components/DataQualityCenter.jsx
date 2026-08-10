@@ -13,6 +13,8 @@ export default function DataQualityCenter({ dataQuality, tickNum }) {
   const hasIssues = dq.missing_by_column.length || dq.duplicate_row_count > 0
     || dq.constant_columns.length || dq.outlier_summary.length;
 
+  const hasUsableSplit = dq.total_column_count > 0 && dq.usable_column_count < dq.total_column_count;
+
   return (
     <div className="panel">
       <div className="panel-head">
@@ -24,7 +26,16 @@ export default function DataQualityCenter({ dataQuality, tickNum }) {
       </div>
 
       <div className="dq-layout">
-        <ScoreRing score={dq.overall_quality_score} />
+        <div className="dq-score-col">
+          <ScoreRing score={dq.overall_quality_score} />
+          {hasUsableSplit && (
+            <p className="dq-usable-note">
+              Scored across all {dq.total_column_count} columns in the file. Only{' '}
+              {dq.usable_column_count} had enough real data to actually analyze —
+              those score <span className="mono" style={{ color: 'var(--text)' }}>{dq.usable_quality_score}</span>.
+            </p>
+          )}
+        </div>
 
         <div className="dq-details">
           {dq.missing_by_column.length > 0 && (

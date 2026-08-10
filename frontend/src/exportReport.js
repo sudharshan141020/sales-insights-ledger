@@ -82,7 +82,9 @@ export function exportAnalysisToExcel(session) {
       { Metric: 'Duplicate row %', Value: dq.duplicate_row_pct },
       { Metric: 'Constant columns', Value: (dq.constant_columns || []).join(', ') },
       { Metric: 'High-cardinality columns', Value: (dq.high_cardinality_columns || []).join(', ') },
-      { Metric: 'Overall quality score', Value: dq.overall_quality_score },
+      { Metric: 'Overall quality score (raw file)', Value: dq.overall_quality_score },
+      { Metric: 'Usable data score (analyzed columns)', Value: dq.usable_quality_score },
+      { Metric: 'Columns actually analyzed', Value: `${dq.usable_column_count ?? ''} of ${dq.total_column_count ?? ''}` },
     ];
     const rows = [...summaryRows.map((r) => ({ Column: r.Metric, 'Missing %': r.Value })), ...missingRows];
     const ws = sheetFromRows(rows);
