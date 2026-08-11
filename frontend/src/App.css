@@ -585,6 +585,22 @@
   margin-bottom: 4px;
 }
 
+.tooltip-value {
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltip-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 /* ---------- Insights panel ---------- */
 .insights-list {
   display: flex;

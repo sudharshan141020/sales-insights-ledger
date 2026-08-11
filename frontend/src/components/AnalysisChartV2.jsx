@@ -84,7 +84,8 @@ function DonutTooltip({ active, payload }) {
   return (
     <div className="chart-tooltip">
       <p className="tooltip-label mono">{p.name}</p>
-      <p className="mono" style={{ color: p.payload.fill }}>
+      <p className="mono tooltip-value">
+        <span className="tooltip-swatch" style={{ background: p.payload.fill }} />
         {p.value.toLocaleString()} ({pct}%)
       </p>
     </div>
@@ -132,7 +133,12 @@ function ScatterView({ analysis }) {
           const p = payload[0].payload;
           return (
             <div className="chart-tooltip">
-              {p.group !== undefined && <p className="mono" style={{ color: groupColor(p.group) }}>{p.group}</p>}
+              {p.group !== undefined && (
+                <p className="mono tooltip-value">
+                  <span className="tooltip-swatch" style={{ background: groupColor(p.group) }} />
+                  {p.group}
+                </p>
+              )}
               <p className="mono">{analysis.x_label}: {p.x.toLocaleString()}</p>
               <p className="mono">{analysis.y_label}: {p.y.toLocaleString()}</p>
             </div>
