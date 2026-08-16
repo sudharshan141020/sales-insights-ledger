@@ -18,6 +18,7 @@ export default function IntelligentDashboard({ topAnalyses, tickNum }) {
             <h4 className="top-analysis-title">{a.title}</h4>
             <AnalysisChartV2 analysis={a} />
             {a.reasoning && <p className="chart-reasoning">{a.reasoning}</p>}
+            {a.forecast_note && <p className="forecast-note">↝ {a.forecast_note}</p>}
           </div>
         ))}
       </div>

@@ -84,7 +84,17 @@ def declining_trend(df: pd.DataFrame, profile: DatasetProfile) -> list:
 
 def missing_data(df: pd.DataFrame, profile: DatasetProfile) -> list:
     out = []
+    # Only warn about missing data in columns that actually feed the
+    # analysis (measures + dimensions). A column that's ~100% empty and
+    # was already excluded from analysis by the completeness guard (see
+    # understanding.py) isn't "skewing" any result -- it's simply not
+    # used, and that's already visible in the Data Quality panel. Flagging
+    # it again here as a weak point is redundant noise, and worse, its
+    # missingness is always maximal (100%) so it drowns out genuinely
+    # useful findings for the story/top-weak-points selection.
+    used_cols = {m.column for m in profile.measures} | {d.column for d in profile.dimensions}
     missing_pct = (df.isnull().mean() * 100).sort_values(ascending=False)
+    missing_pct = missing_pct[missing_pct.index.isin(used_cols)]
     worst = missing_pct[missing_pct > 15]
     for col, pct in worst.head(3).items():
         priority = HIGH if pct > 50 else MEDIUM if pct > 30 else LOW

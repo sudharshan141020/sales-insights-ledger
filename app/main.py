@@ -19,6 +19,7 @@ from app.executor_v2 import execute_all as execute_all_v2
 from app.analyzers.registry import get_analyzer
 from app.data_quality import analyze_data_quality
 from app.correlation_center import analyze_correlations, analyze_multicollinearity
+from app.forecasting import forecast_trend
 from app.pdf_report import build_pdf_report
 
 import math
@@ -102,6 +103,20 @@ def _run_v2_pipeline(df: pd.DataFrame) -> dict:
     top3_ids = {s.id for s in top3}
 
     all_executed = execute_all_v2(df_exec, specs)
+
+    # Additive: attach a short linear-trend forecast to any trend/line
+    # analysis that has enough history and a clear enough pattern to
+    # project. Mutating in place so both top_executed and all_analyses
+    # (built from the same dicts below) automatically pick it up.
+    for a in all_executed:
+        if a.get("type") == "trend" and a.get("data"):
+            result = forecast_trend(a["data"])
+            if result["forecast_points"]:
+                for point in a["data"]:
+                    point["is_forecast"] = False
+                a["data"] = a["data"] + result["forecast_points"]
+            a["forecast_note"] = result["note"]
+
     top_order = {s.id: i for i, s in enumerate(top3)}
     top_executed = sorted(
         (a for a in all_executed if a["id"] in top3_ids),

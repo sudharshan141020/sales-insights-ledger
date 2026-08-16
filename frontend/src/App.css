@@ -221,7 +221,7 @@
 .app-main-area {
   flex: 1;
   min-width: 0;
-  padding: 80px 32px 40px;
+  padding: 100px 32px 40px;
 }
 
 .app-main-area.centered {
@@ -581,7 +581,7 @@
 }
 
 .tooltip-label {
-  color: var(--text-muted);
+  color: var(--text);
   margin-bottom: 4px;
 }
 
@@ -1428,6 +1428,18 @@
   font-style: italic;
   margin-top: 10px;
   line-height: 1.5;
+}
+
+.forecast-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.tooltip-projected-tag {
+  color: var(--text-faint);
+  font-style: italic;
 }
 
 /* ---------- Data Quality Center ---------- */

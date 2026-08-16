@@ -19,11 +19,21 @@ const PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--ch
 
 function ChartTooltip({ active, payload, label, valueLabel, isCurrency }) {
   if (!active || !payload?.length) return null;
-  const v = payload[0].value;
+  // When a trend line is split into actual/forecast series, both may be
+  // present in the payload at the bridge point -- prefer whichever has a
+  // real number, and treat it as "projected" only if forecast is the sole
+  // source (actual takes precedence at the shared bridge point).
+  const actualEntry = payload.find((p) => p.dataKey === 'actual' && typeof p.value === 'number');
+  const forecastEntry = payload.find((p) => p.dataKey === 'forecast' && typeof p.value === 'number');
+  const entry = actualEntry || forecastEntry || payload.find((p) => typeof p.value === 'number') || payload[0];
+  const v = entry?.value;
+  const isProjected = !actualEntry && !!forecastEntry;
   return (
     <div className="chart-tooltip">
-      <p className="tooltip-label mono">{label}</p>
-      <p className="mono" style={{ color: 'var(--teal)' }}>
+      <p className="tooltip-label mono">
+        {label}{isProjected && <span className="tooltip-projected-tag"> · projected</span>}
+      </p>
+      <p className="mono" style={{ color: isProjected ? 'var(--text-muted)' : 'var(--teal)' }}>
         {valueLabel}: {isCurrency ? '$' : ''}{typeof v === 'number' ? v.toLocaleString('en-US', { maximumFractionDigits: 1 }) : v}
       </p>
     </div>
@@ -31,14 +41,40 @@ function ChartTooltip({ active, payload, label, valueLabel, isCurrency }) {
 }
 
 function LineView({ analysis, isCurrency }) {
+  const hasForecast = analysis.data?.some((d) => d.is_forecast);
+  let chartData = analysis.data;
+
+  if (hasForecast) {
+    chartData = analysis.data.map((d) => ({
+      label: d.label,
+      actual: d.is_forecast ? null : d.value,
+      forecast: d.is_forecast ? d.value : null,
+    }));
+    // Bridge the two series at the last actual point so the dashed
+    // forecast line starts exactly where the solid line ends, instead of
+    // leaving a visual gap.
+    let lastActualIdx = -1;
+    chartData.forEach((d, i) => { if (d.actual != null) lastActualIdx = i; });
+    if (lastActualIdx !== -1 && lastActualIdx < chartData.length - 1) {
+      chartData[lastActualIdx].forecast = chartData[lastActualIdx].actual;
+    }
+  }
+
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <LineChart data={analysis.data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+      <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--border-soft)" vertical={false} />
         <XAxis dataKey="label" stroke="var(--text-faint)" fontSize={12} fontFamily="var(--font-mono)" tickLine={false} axisLine={{ stroke: 'var(--border)' }} />
         <YAxis stroke="var(--text-faint)" fontSize={12} fontFamily="var(--font-mono)" tickLine={false} axisLine={false} tickFormatter={formatAxisValue} />
         <Tooltip content={<ChartTooltip valueLabel={analysis.metric_column || 'Value'} isCurrency={isCurrency} />} cursor={{ stroke: 'var(--border)' }} />
-        <Line type="monotone" dataKey="value" stroke="var(--teal)" strokeWidth={2} dot={false} />
+        {hasForecast ? (
+          <>
+            <Line type="monotone" dataKey="actual" stroke="var(--teal)" strokeWidth={2} dot={false} connectNulls={false} />
+            <Line type="monotone" dataKey="forecast" stroke="var(--text-muted)" strokeWidth={2} strokeDasharray="5 5" dot={false} connectNulls={false} />
+          </>
+        ) : (
+          <Line type="monotone" dataKey="value" stroke="var(--teal)" strokeWidth={2} dot={false} />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );

@@ -63,6 +63,7 @@ export default function AnalysisExplorerV2({ analyses, tickNum }) {
         <div style={{ marginTop: 16 }}>
           <AnalysisChartV2 analysis={active} />
           {active.reasoning && <p className="chart-reasoning">{active.reasoning}</p>}
+          {active.forecast_note && <p className="forecast-note">↝ {active.forecast_note}</p>}
         </div>
       )}
     </div>
